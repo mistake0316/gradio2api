@@ -12,7 +12,7 @@ from gradio.components.image_editor import EditorValue, ImageType
 from gradio.components.multimodal_textbox import MultimodalValue
 from gradio.components.paramviewer import Parameter
 # ------
-FILEPATH = str
+FILE = str
 # ------
 class _Chatbot(BaseModel):
   message: Optional[str]
@@ -20,7 +20,7 @@ class _Chatbot(BaseModel):
 
 class _Dataframe(BaseModel):
   headers: Optional[list[str]]
-  data: Optional[FILEPATH]
+  data: Optional[FILE]
   metadata: Optional[dict | None]
 
 class _AltairPlotData(BaseModel):
@@ -29,21 +29,21 @@ class _AltairPlotData(BaseModel):
   chart: str
 
 class _Gallery(BaseModel):
-  image:FILEPATH
+  image:FILE
   caption:str | None
 
 class _ImageEditor(BaseModel):
-  background: FILEPATH
-  layers: list[FILEPATH]
-  composite: FILEPATH | None
+  background: FILE
+  layers: list[FILE]
+  composite: FILE | None
   id: str | None
 
 class _Multimodaltextbox(BaseModel):
   text: str
-  files: list[FILEPATH]
+  files: list[FILE]
 # ------
 AnnotatedImage = tuple[str, list[tuple[str, str]]] | None
-Audio = FILEPATH
+Audio = FILE
 Barplot = _AltairPlotData
 Button = str | None
 Chatbot = _Chatbot
@@ -63,7 +63,7 @@ FileExplorer = str | list[str] | None
 Gallery = list[_Gallery] | None
 HighlightedText = list[tuple[str, str | float | None]] | dict | None
 HTML = str | None
-Image = FILEPATH
+Image = FILE
 ImageEditor = _ImageEditor | None
 JSON = dict | list | str | None
 Label = dict[str, float] | str | int | float | None
