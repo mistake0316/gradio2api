@@ -11,8 +11,8 @@ from gradio_client.utils import (
   sanitize_parameter_names as sanitize_return_names,
 )
 
-from gr_types import LOWER_PARAMETER_TYPES, LOWER_RETURN_TYPES
-from gr_types.models_parameters import FILE as FILE_INPUT
+from ..gr_types import LOWER_PARAMETER_TYPES, LOWER_RETURN_TYPES
+from ..gr_types.models_parameters import FILE as FILE_INPUT
 from copy import deepcopy
 
 import functools

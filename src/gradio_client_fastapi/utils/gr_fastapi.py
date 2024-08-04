@@ -1,6 +1,6 @@
 from fastapi import FastAPI, APIRouter
-from gr_application import RemoteGradioApplication as GRA, GradioAPI 
-from hash import make_hash
+from .gr_application import RemoteGradioApplication as GRA, GradioAPI 
+from .hash import make_hash
 
 def register_api(
   api_path:str,

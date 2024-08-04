@@ -3,8 +3,8 @@ from pydantic.main import create_model
 from typing import Any, TypedDict, Callable
 from typing_extensions import Optional, Any
 
-from gr_types import LOWER_PARAMETER_TYPES, LOWER_RETURN_TYPES
-from utils.names import AutoName
+from ..gr_types import LOWER_PARAMETER_TYPES, LOWER_RETURN_TYPES
+from .names import AutoName
 
 class IgnoreModel(BaseModel):
   model_config = ConfigDict(extra="ignore")
