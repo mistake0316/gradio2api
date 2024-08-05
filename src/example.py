@@ -8,7 +8,7 @@ remote_servers = [
   },
   {
     "uri":"zheyangqin/VADER",
-    "prefix":"/ChartGemma",
+    "prefix":"/VADER",
   },
 ]
 app = FastAPI()

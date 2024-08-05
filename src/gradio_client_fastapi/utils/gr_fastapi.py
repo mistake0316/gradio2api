@@ -34,14 +34,11 @@ def remote_gr_application_to_fastapi(
   gra = GRA(uri)
   
   for api_name, api in gra.apis.items():
+    tags = [uri]+( [prefix] if prefix else [] )
     register_api(
       f"{prefix}{api_name}",
       api=api,
       hook=hook,
-      tags =[uri]+(
-        [prefix]
-        if prefix else
-        []
-      )
+      tags = tags
     )
   return hook

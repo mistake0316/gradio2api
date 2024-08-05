@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.main import create_model
 from typing import Any, TypedDict, Callable, Literal
 from types import EllipsisType
@@ -20,9 +20,14 @@ import functools
 class IgnoreModel(BaseModel):
   model_config = ConfigDict(extra="ignore")
 
+class PythonType(BaseModel):
+  type: str
+  description: str
+
 class PartGradioField(IgnoreModel):
   label: str
   component: str
+  python_type: PythonType
 
 class PartReturn(PartGradioField):
   ...
@@ -36,12 +41,14 @@ class InnerAnnotation(BaseModel):
   annotation: Any
   required: bool
   default: Optional[Any] = None
+  description: str = ""
 
 class BaseField:
   name:str
   annotation:Any
   required:bool
   default:bool | EllipsisType
+  description: str
 
   def __init__(
       self,
@@ -87,6 +94,7 @@ class BaseField:
         annotation=self.annotation,
         required=self.required,
         default=self.default,
+        description=self.description
       )
     }
 
@@ -96,9 +104,10 @@ class BaseField:
         field_info_D = field_info.model_dump()
         annotation = field_info_D['annotation']
         default = ...
+        description = field_info_D['description']
         if not field_info_D['required']:
             default = field_info_D['default']
-        single_field_dict[field_name] = (annotation, default)
+        single_field_dict[field_name] = (annotation, Field(default, description=description))
     return single_field_dict
 
 class ParameterField(BaseField):
@@ -113,6 +122,8 @@ class ParameterField(BaseField):
     )
     self.required = not self._config_dict.get("parameter_has_default")
     self.default = self._config_dict.get("parameter_default", ...)
+    self.description = self._config_dict.get("python_type", {}).get("description", "")
+
 
 class ReturnField(BaseField):
   def __init__(self, config:PartReturn):
@@ -122,10 +133,11 @@ class ReturnField(BaseField):
     self.name=sanitize_return_names(self.config.label)
     self.annotation = self.get_gr_type(
       reference=LOWER_RETURN_TYPES,
-      preprocesser=str.lower
+      preprocesser=str.lower,
     )
     self.required = True
     self.default = ...
+    self.description = self._config_dict.get("python_type", {}).get("description", "")
 
 ACCEPT_FIELD_TYPE = ReturnField | ParameterField | PartReturn | PartParameter | dict
 class MultipleFields:
@@ -200,7 +212,6 @@ class GradioAPI:
 
     self.__client = client
   
-
   def __verify_in_gr_client(self):
     assert self.client is not None
     assert self.api_name in self.view_api(
@@ -255,7 +266,7 @@ class GradioAPI:
       for key in item.model_fields.keys():
         ret[key] = dfs_helper(getattr(item, key))
       return ret
-    
+
     return dfs_helper(item)
   
   def normalize_output(self, gr_result): # will return self.retun_model type
@@ -285,7 +296,6 @@ class GradioAPI:
       return self.normalize_output(gr_result)
     else:
       raise ValueError
-
 
   def __repr__(self) -> str:
     return "\n\n".join([
