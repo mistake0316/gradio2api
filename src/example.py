@@ -1,24 +1,16 @@
-from gradio_client_fastapi.utils.gr_fastapi import remote_gr_application_to_fastapi
 from fastapi import FastAPI
+from gradio2api.client.aggregator import Aggregator as ClientAggreator
 
-remote_servers = [
+remote_servers_list = [
   {
-    "uri":"ahmed-masry/ChartGemma",
-    "prefix":"/ChartGemma",
+    "uri":"tonyassi/voice-clone",
+    "prefix":"/voice-clone"
   },
   {
-    "uri":"zheyangqin/VADER",
-    "prefix":"/VADER",
+    "uri":"turboedit/turbo_edit",
+    "prefix":"/turbo_edit"
   },
 ]
+router = ClientAggreator(remote_servers_list)
 app = FastAPI()
-
-for item in remote_servers:
-  uri = item.pop("uri")
-  prefix = item.pop("prefix")
-  remote_gr_application_to_fastapi(
-    uri=uri,
-    prefix=prefix,
-    hook=app,
-  )
-
+app.include_router(router)

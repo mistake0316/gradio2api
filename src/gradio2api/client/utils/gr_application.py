@@ -14,6 +14,7 @@ from gradio_client.utils import (
 from ..gr_types import LOWER_PARAMETER_TYPES, LOWER_RETURN_TYPES
 from ..gr_types.models_parameters import FILE as FILE_INPUT
 from copy import deepcopy
+from .names import prefix_to_name
 
 import functools
 
@@ -181,14 +182,15 @@ class MultipleFields:
 
     return return_field
   
-  def to_pydantic_model(self, model_name:str)->type[BaseModel]:
+  def to_pydantic_model(self, model_prefix:str)->type[BaseModel]:
+    model_name = prefix_to_name(model_prefix)
     fields_dict = {}
     for F in self.list_fields:
       _single_field_dict = F.to_field_dict()
       assert len(_single_field_dict) == 1 and list(_single_field_dict.keys())[0] not in fields_dict
       for key, val in _single_field_dict.items():
         fields_dict[key] = val
-    
+
     return create_model(
       model_name,
       **fields_dict,
@@ -200,7 +202,6 @@ class GradioAPI:
     self,
     api_name:str,
     config_dict:dict,
-    prefix:str,
     *,
     client:Client | None = None
   ):
@@ -208,7 +209,6 @@ class GradioAPI:
     self.__config_dict = deepcopy(config_dict)
     self.parameters = deepcopy(config_dict["parameters"])
     self.returns = deepcopy(config_dict["returns"])
-    self.prefix = prefix
 
     self.__client = client
   
@@ -238,14 +238,14 @@ class GradioAPI:
   def parameter_model(self)->type[BaseModel]:
     return (
       MultipleFields(self.parameters)
-      .to_pydantic_model(f"{self.prefix}{self.normalized_api_name}_parameter")
+      .to_pydantic_model(f"{self.normalized_api_name}_parameter")
     )
 
   @property
   def return_model(self)->type[BaseModel]:
     return (
       MultipleFields(self.returns)
-      .to_pydantic_model(f"{self.prefix}{self.normalized_api_name}_return")
+      .to_pydantic_model(f"{self.normalized_api_name}_return")
     )
 
   @property
@@ -314,19 +314,16 @@ class RemoteGradioApplication:
   client_docuemnt:str
   client_info_dict:dict
   apis:dict[str, GradioAPI]
-  prefix:str
 
   def __init__(
     self,
     src:str,
-    prefix:str="",
     **gr_client_kwargs,
   ):
     client_kwargs = {
       "src":src,
       **gr_client_kwargs,
     }
-    self.prefix = prefix
 
     self.__client = Client(
       **client_kwargs
@@ -354,7 +351,6 @@ class RemoteGradioApplication:
       api_name:GradioAPI(
         api_name=api_name,
         config_dict=config_dict,
-        prefix=f"{self.prefix}_",
         client=self.client,
       )
       for api_name, config_dict in self.client_info_dict["named_endpoints"].items()
