@@ -1,23 +1,21 @@
 from setuptools import setup, find_packages
 
 setup(
-  name="gradio_client_fastapi",
+  name="gradio2api",
   version="0.0.1",
-  description="Transfer gradio application to fastapi applicaiton.",
-  url="https://github.com/mistake0316/gradio_client_fastapi",
-  author="Tang Yi Dar",
+  description="Transfer gradio application to fastapi.",
+  url="https://github.com/mistake0316/gradio2api",
+  author="湯沂達(Tang Yi Dar)",
   author_email="changethewhat@gmail.com",
   license="MIT",
   packages=find_packages(),
   install_requires=[
-    "fastapi",
+    "fastapi[standard]",
     "gradio_client",
     "gradio",
   ],
   classifiers=[
     "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
-    "Operating System :: OS Independent",
   ],
   python_requires=">=3.9"
 )

@@ -6,15 +6,18 @@ from typing_extensions import Optional, Any
 
 from gradio_client import Client
 from gradio_client.client import DEFAULT_TEMP_DIR as GR_DEFAULT_TEMP_DIR
+from gradio_client import utils as gr_client_utils
 from gradio_client.utils import (
   sanitize_parameter_names,
   sanitize_parameter_names as sanitize_return_names,
 )
+import gradio as gr
+from gradio import utils as gr_utils
 
-from ..gr_types import LOWER_PARAMETER_TYPES, LOWER_RETURN_TYPES
-from ..gr_types.models_parameters import FILE as FILE_INPUT
+from .gr_types import LOWER_PARAMETER_TYPES, LOWER_RETURN_TYPES
+from .gr_types.models_parameters import FILE as FILE_INPUT
 from copy import deepcopy
-from .names import prefix_to_name
+from .utils.names import prefix_to_name
 
 import functools
 
@@ -125,7 +128,6 @@ class ParameterField(BaseField):
     self.default = self._config_dict.get("parameter_default", ...)
     self.description = self._config_dict.get("python_type", {}).get("description", "")
 
-
 class ReturnField(BaseField):
   def __init__(self, config:PartReturn):
     super().__init__(config)
@@ -203,15 +205,23 @@ class GradioAPI:
     api_name:str,
     config_dict:dict,
     *,
-    client:Client | None = None
+    client:Client | None = None,
+    app:gr.Blocks | None = None,
   ):
     self.api_name = api_name
     self.__config_dict = deepcopy(config_dict)
     self.parameters = deepcopy(config_dict["parameters"])
     self.returns = deepcopy(config_dict["returns"])
 
+    assert not (
+      (client != None)
+      and
+      (app != None)
+    ), "only allow one of client or app"
+
     self.__client = client
-  
+    self.__app = app
+
   def __verify_in_gr_client(self):
     assert self.client is not None
     assert self.api_name in self.view_api(
@@ -229,6 +239,10 @@ class GradioAPI:
   @property
   def client(self)->Client:
     return self.__client
+  
+  @property
+  def app(self)->gr.Blocks:
+    return self.__app
 
   @property
   def config_dict(self):
@@ -252,7 +266,7 @@ class GradioAPI:
   def normalized_api_name(self):
     return self.api_name.replace("/","_")
 
-  def normalize_input(self, item): # will return dict
+  def normalize_input(self, item)->dict: # will return dict
     if type(item) is dict:
       item = self.parameter_model(**item)
     
@@ -269,18 +283,14 @@ class GradioAPI:
 
     return dfs_helper(item)
   
-  def normalize_output(self, gr_result): # will return self.retun_model type
-    ONLY_1_OUTPUT = len(self.returns) == 1
-    if ONLY_1_OUTPUT:
-      gr_result = [gr_result]
-    
+  def normalize_output(self, gr_result:list): # will return self.retun_model type
     D = {
       sanitize_return_names(R["label"]): field_result
       for R, field_result in zip(self.returns, gr_result)
     }
     return self.return_model(**D)
 
-  def predict(self, item, return_fomat:Literal["list", "dict"]="dict"):
+  def predict_from_client(self, item, return_fomat:Literal["list", "dict"]="dict"):
     assert self.client is not None
     item = self.normalize_input(item)
     
@@ -290,12 +300,71 @@ class GradioAPI:
       **item,
       api_name=self.api_name,
     )
+    ONLY_1_OUTPUT = len(self.returns) == 1
+    if ONLY_1_OUTPUT:
+      gr_result = [gr_result]
+    
     if return_fomat == "list":
       return gr_result
     elif return_fomat == "dict":
       return self.normalize_output(gr_result)
     else:
       raise ValueError
+
+  def predict_from_app(self, item, return_fomat:Literal["list", "dict"]="dict"):
+    assert self.app is not None
+    item = self.normalize_input(item)
+    item = self.parameter_model(**item)
+    def dfs_unwrapper(item):
+      if item.__class__ == FILE_INPUT:
+        return item.path
+      elif isinstance(item, BaseModel):
+        return {
+          key:dfs_unwrapper(getattr(item, key))
+          for key in item.model_fields_set
+        }
+      else:
+        return item
+    inputs = [
+      dfs_unwrapper(getattr(item,sanitize_parameter_names(P["parameter_name"])))
+      for P in self.parameters
+    ]
+    fn_index = next(
+      (i for i, d in self.app.fns.items() if d.api_name == self.api_name[1:]), # ignore first "/"
+      None,
+    )
+    processed_input = self.app.serialize_data(fn_index, inputs)
+    fn = self.app.fns[fn_index]
+    outputs = gr_client_utils.synchronize_async(
+      self.app.process_api,
+      block_fn=fn,
+      inputs=processed_input,
+      request=None,
+      state={}
+    )
+    outputs = outputs["data"]
+    if fn.batch:
+      outputs = [out[0] for out in outputs]
+    outputs = self.app.deserialize_data(fn_index, outputs)
+    processed_outputs = gr_utils.resolve_singleton(outputs)
+    
+    ONLY_1_OUTPUT = len(self.returns) == 1
+    if ONLY_1_OUTPUT:
+      processed_outputs = [processed_outputs]
+
+    if return_fomat=="list":
+      return processed_outputs
+    normalized_output = self.normalize_output(processed_outputs)
+    
+    return normalized_output
+
+  def predict(self, item, return_fomat:Literal["list", "dict"]="dict"):
+    if self.app:
+      return self.predict_from_app(item, return_fomat)
+    elif self.client:
+      return self.predict_from_client(item, return_fomat)
+    else:
+      raise RuntimeError("should have one of app or client")
 
   def __repr__(self) -> str:
     return "\n\n".join([
@@ -308,6 +377,33 @@ class GradioAPI:
 
   def __call__(self, item):
     return self.predict(item)
+
+class LocalGraioApplication:
+  app:gr.Blocks
+  api_info:dict
+  apis:dict[str, GradioAPI]
+
+  def __init__(
+    self,
+    app:gr.Blocks,
+  ):
+    self.app = app
+    self.api_info = app.get_api_info()
+    self._prepare_api()
+
+  def _prepare_api(self):
+    self.__apis = {
+      api_name:GradioAPI(
+        api_name=api_name,
+        config_dict=config_dict,
+        app=self.app,
+      )
+      for api_name, config_dict in self.api_info["named_endpoints"].items()
+    }
+  
+  @property
+  def apis(self)->dict[str,GradioAPI]:
+    return self.__apis
 
 class RemoteGradioApplication:
   src:str

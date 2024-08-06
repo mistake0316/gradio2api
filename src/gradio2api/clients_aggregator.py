@@ -1,8 +1,7 @@
 from typing import Any
-from .utils.hash import _make_hash
 from pydantic import BaseModel, model_validator
-from .utils.gr_fastapi import GradioAppRouter
-from .utils.hash import add_and_verify as add_prefix_and_verify
+from .gr_fastapi import RemoteGradioAppRouter
+from .utils.hash import add_key_and_verify as add_prefix_and_verify
 from typing_extensions import Self
 from fastapi import APIRouter
 
@@ -17,7 +16,7 @@ class AppConfig(BaseModel):
 
 class Aggregator(APIRouter):
   config_list : list[AppConfig | dict]
-  graido_app_routers: dict[str, GradioAppRouter]
+  graido_app_routers: dict[str, RemoteGradioAppRouter]
 
   def __init__(
       self,
@@ -49,7 +48,7 @@ class Aggregator(APIRouter):
       uri = item.uri
       prefix = item.prefix
       
-      router = self.graido_app_routers[prefix] = GradioAppRouter(
+      router = self.graido_app_routers[prefix] = RemoteGradioAppRouter(
         uri,
         prefix=prefix
       )

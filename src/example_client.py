@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from gradio2api.client.aggregator import Aggregator as ClientAggreator
+from gradio2api.clients_aggregator import Aggregator as ClientAggreator
 
 remote_servers_list = [
   {
