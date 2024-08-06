@@ -47,7 +47,7 @@ demo = gr.TabbedInterface(
 
 router = LocalGradioAppRouter(app=demo)
 
-app = gr.mount_gradio_app(app,demo,path="/gui")
+app = gr.mount_gradio_app(app,demo,path="/gradio")
 app.include_router(
   router=router,
   prefix="/api",
