@@ -13,6 +13,7 @@ from gradio_client.utils import (
 )
 import gradio as gr
 from gradio import utils as gr_utils
+from gradio.data_classes import JsonData
 
 from .gr_types import LOWER_PARAMETER_TYPES, LOWER_RETURN_TYPES
 from .gr_types.models_parameters import FILE as FILE_INPUT
@@ -351,6 +352,11 @@ class GradioAPI:
     ONLY_1_OUTPUT = len(self.returns) == 1
     if ONLY_1_OUTPUT:
       processed_outputs = [processed_outputs]
+    def normalize_JsonData(item):
+      if isinstance(item, JsonData):
+        return item.root
+      return item
+    processed_outputs = [*map(normalize_JsonData, processed_outputs)]
 
     if return_fomat=="list":
       return processed_outputs
