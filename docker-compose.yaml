@@ -1,0 +1,14 @@
+services:
+  aggerator:
+    build:
+      context: .
+      platforms:
+        - linux/arm64
+    command: ["sleep", "infinity"]
+    volumes:
+      - ../volume:/volume
+      - ./src:/src
+      - ./.vscode-server:/root/.vscode-server
+    ports:
+      - 8000:8000
+      - 8888:8888

@@ -29,7 +29,7 @@ def cli_remote():
   kwargs = parser.parse_args().__dict__
   host = kwargs.pop("host")
   port = kwargs.pop("port")
-  
+
   servers = kwargs.pop("servers")
   kwargs["servers"] = []
   for s in servers:
@@ -43,7 +43,7 @@ def cli_remote():
       "uri":uri,
       "prefix":prefix,
     })
-  
+
   app = create_gradio2api(**kwargs)
 
   uvicorn.run(

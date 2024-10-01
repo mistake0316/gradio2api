@@ -46,6 +46,10 @@ class _ImageEditor(BaseModel):
 class _Multimodaltextbox(BaseModel):
   text: str
   files: list[FILE]
+
+class _Video(BaseModel):
+  video: FILE
+  subtitles: FILE | None = None
 # ------
 from gradio.data_classes import GradioRootModel
 def get_root_type_of_T(T:GradioRootModel):
@@ -98,7 +102,7 @@ State = Any
 Textbox = str | None
 Timer = float | None
 UploadButton = str | list[str] | None
-Video = str | Path | tuple[str | Path, str | Path | None] | None
+Video = _Video | None
 # ------
 TYPES = {
   "AnnotatedImage" : AnnotatedImage,

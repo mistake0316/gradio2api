@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
   name="gradio2api",
-  version="0.0.6.2",
+  version="0.0.7.0",
   description="Transfer gradio application to fastapi.",
   url="https://github.com/mistake0316/gradio2api",
   author="湯沂達(Tang Yi Dar)",

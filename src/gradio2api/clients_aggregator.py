@@ -204,6 +204,7 @@ def create_gradio2api(
   *,
   gradio_client_config_path :str = None,
   error_allowed=True,
+  mounting_point="/gradio",
 ):
 
   remote_servers_config_list = []
@@ -231,6 +232,6 @@ def create_gradio2api(
   app = gr.mount_gradio_app(
     app,
     aggregator_router.grand_gr_app,
-    "/gui"
+    mounting_point,
   )
   return app

@@ -37,6 +37,9 @@ class _ImageEditor(BaseModel):
 class _Multimodaltextbox(BaseModel):
   text: str
   files: list[FILE]
+
+class _Video(BaseModel):
+  video:FILE
 # ------
 AnnotatedImage = tuple[str, list[tuple[str, str]]] | None
 Audio = FILE
@@ -80,7 +83,7 @@ State = Any
 Textbox = str | None
 Timer = float | None
 UploadButton = bytes | str | list[bytes] | list[str] | None
-Video = str | None
+Video = _Video | None
 # ------
 TYPES = {
   "AnnotatedImage" : AnnotatedImage,

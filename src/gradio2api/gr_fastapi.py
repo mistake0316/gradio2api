@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from .gr_application import RemoteGradioApplication as RGA, LocalGraioApplication as LGA 
+from .gr_application import RemoteGradioApplication as RGA, LocalGradioApplication as LGA 
 from gradio import Blocks
 import gradio as gr
 

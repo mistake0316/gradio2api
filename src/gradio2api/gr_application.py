@@ -20,6 +20,7 @@ from .gr_types import LOWER_PARAMETER_TYPES, LOWER_RETURN_TYPES
 from .gr_types.models_parameters import FILE as FILE_INPUT
 from copy import deepcopy
 from .utils.names import prefix_to_name
+from .utils.gr_client_utils import LoadGradioClient
 from gradio.exceptions import (
     GradioVersionIncompatibleError,
 )
@@ -239,8 +240,10 @@ class GradioAPI:
       (app != None)
     ), "only allow one of client or app"
 
-    self.__client = client
     self.__app = app
+    self.__client = client
+    if self.__app:
+      self.__client = LoadGradioClient(self.__app.local_url)
 
   def __verify_in_gr_client(self):
     assert self.client is not None
@@ -312,7 +315,7 @@ class GradioAPI:
     }
     return self.return_model(**D)
 
-  def predict_from_client(self, item, return_fomat:Literal["list", "dict"]="dict"):
+  def predict(self, item, return_fomat:Literal["list", "dict"]="dict"):
     assert self.client is not None
     item = self.normalize_input(item)
 
@@ -333,66 +336,6 @@ class GradioAPI:
     else:
       raise ValueError
 
-  def predict_from_app(self, item, return_fomat:Literal["list", "dict"]="dict"):
-    assert self.app is not None
-    item = self.normalize_input(item)
-    item = self.parameter_model(**item)
-    def dfs_unwrapper(item):
-      if item.__class__ == FILE_INPUT:
-        return item.path
-      elif isinstance(item, BaseModel):
-        return {
-          key:dfs_unwrapper(getattr(item, key))
-          for key in item.model_fields_set
-        }
-      else:
-        return item
-    inputs = [
-      dfs_unwrapper(getattr(item,sanitize_parameter_names(P["parameter_name"])))
-      for P in self.parameters
-    ]
-    fn_index = next(
-      (i for i, d in self.app.fns.items() if d.api_name == self.api_name[1:]), # ignore first "/"
-      None,
-    )
-    processed_input = self.app.serialize_data(fn_index, inputs)
-    fn = self.app.fns[fn_index]
-    outputs = gr_client_utils.synchronize_async(
-      self.app.process_api,
-      block_fn=fn,
-      inputs=processed_input,
-      request=None,
-      state={}
-    )
-    outputs = outputs["data"]
-    if fn.batch:
-      outputs = [out[0] for out in outputs]
-    outputs = self.app.deserialize_data(fn_index, outputs)
-    processed_outputs = gr_utils.resolve_singleton(outputs)
-
-    ONLY_1_OUTPUT = len(self.returns) == 1
-    if ONLY_1_OUTPUT:
-      processed_outputs = [processed_outputs]
-    def normalize_JsonData(item):
-      if isinstance(item, JsonData):
-        return item.root
-      return item
-    processed_outputs = [*map(normalize_JsonData, processed_outputs)]
-
-    if return_fomat=="list":
-      return processed_outputs
-    normalized_output = self.normalize_output(processed_outputs)
-
-    return normalized_output
-
-  def predict(self, item, return_fomat:Literal["list", "dict"]="dict"):
-    if self.app:
-      return self.predict_from_app(item, return_fomat)
-    elif self.client:
-      return self.predict_from_client(item, return_fomat)
-    else:
-      raise RuntimeError("should have one of app or client")
-
   def __repr__(self) -> str:
     return "\n\n".join([
       Client._render_endpoints_info(
@@ -405,7 +348,7 @@ class GradioAPI:
   def __call__(self, item):
     return self.predict(item)
 
-class LocalGraioApplication:
+class LocalGradioApplication:
   app:gr.Blocks
   api_info:dict
   apis:dict[str, GradioAPI]
@@ -415,6 +358,9 @@ class LocalGraioApplication:
     app:gr.Blocks,
   ):
     self.app = app
+    if not app.is_running:
+      self.app.launch(prevent_thread_lock=True)
+
     self.api_info = app.get_api_info()
     self._prepare_api()
 
@@ -451,7 +397,7 @@ class RemoteGradioApplication:
       **gr_client_kwargs,
     }
 
-    self.__client = Client(
+    self.__client = LoadGradioClient(
       **client_kwargs
     )
 
