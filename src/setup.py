@@ -13,6 +13,7 @@ setup(
     "fastapi[standard]",
     "gradio_client",
     "gradio",
+    "retry",
   ],
   entry_points={
     "console_scripts":[
